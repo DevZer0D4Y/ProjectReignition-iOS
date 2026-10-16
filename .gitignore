@@ -28,3 +28,8 @@ mono_crash.*.json
 
 # Ignore FFMPEG .dll
 Project/addons/ffmpeg/win64/~libgdffmpeg.windows.template_debug.x86_64.dll
+
+# iOS port: its export preset is part of the source; builds go to out/
+!/ios/overlay/export_presets.cfg
+/out/
+.DS_Store
