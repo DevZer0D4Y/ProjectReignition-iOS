@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.9 (build 5)
+
+- The homing attack's aura no longer stays on Sonic. Godot's Mobile renderer ignores the fade the game uses for it; the port now fades such objects itself, which also fixes item box glows, fire souls, debris, the Evil Foundry golem's core and Pirate Storm's lightning.
+- No more black patches where Lost Prologue's Wonderblocks appear: the Mobile renderer halved multiply-blended effects, which now draw as on PC there and in later stages.
+- Cutscenes that showed only subtitles and sound play their video again (the one after the first stage, Events 4 to 9, the openings, the endings and the developer intro).
+
 ## 1.0.9 (build 4)
 
 First iOS release, built from Project Reignition 1.0.9 (`dev/v1.0.x` at e13abfa).
@@ -14,4 +20,4 @@ First iOS release, built from Project Reignition 1.0.9 (`dev/v1.0.x` at e13abfa)
 - Garbage collections run during loading screens instead of gameplay.
 - Frame-time log and test modes for benchmarks and saves.
 
-Known issues: multiply-blended effects render too dark, the first visit to an area can stutter while shaders compile, and Party mode's local network play is untested.
+Known issues: the first visit to an area can stutter while shaders compile, and Party mode's local network play is untested.

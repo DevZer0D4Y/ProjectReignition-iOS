@@ -23,6 +23,14 @@ public partial class VideoStreamFileLoadPlayer : VideoStreamPlayer
 			return;
 
 		string path = videoFilePath;
+		// A uid:// reference has no extension to swap; resolve it to its file
+		// first (scripts/apply_ios_settings.py also rewrites them as paths).
+		if (path.StartsWith("uid://"))
+		{
+			long id = ResourceUid.TextToId(path);
+			if (ResourceUid.HasId(id))
+				path = ResourceUid.GetIdPath(id);
+		}
 		if (!ResourceLoader.Exists(path, "VideoStream"))
 		{
 			// Platforms without the FFmpeg extension (iOS) play Ogg Theora copies

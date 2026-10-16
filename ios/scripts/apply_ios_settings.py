@@ -11,6 +11,15 @@ project.godot:
   - PerfProbe autoload: frame-time log and test modes (ios/PerfProbe.cs)
   - LoadingCollector autoload: garbage collection while the screen is black
     after a scene change (ios/LoadingCollector.cs)
+  - MobileRendererFixes autoload: GeometryInstance3D.transparency, which the
+    Mobile renderer ignores, and Multiply-blended standard materials, which
+    it halves (ios/MobileRendererFixes.cs)
+object/stage/destructable/resource/script/DestructableObject.cs:
+  - debris handed to MobileRendererFixes
+Multiply-blended shaders (blend_mul):
+  - twice their output on the Mobile renderer, which halves it
+video/**/*.tscn:
+  - cutscene videos named by path instead of uid://
 Sonic Remake Project.csproj:
   - a 64 MB young generation for the garbage collector on iOS
 core/SaveManager.cs:
@@ -58,6 +67,7 @@ def set_setting(text, section, key, value):
 text = set_setting(text, 'autoload', 'TouchGamepad', '"*res://ios/touch_gamepad.gd"')
 text = set_setting(text, 'autoload', 'PerfProbe', '"*res://ios/PerfProbe.cs"')
 text = set_setting(text, 'autoload', 'LoadingCollector', '"*res://ios/LoadingCollector.cs"')
+text = set_setting(text, 'autoload', 'MobileRendererFixes', '"*res://ios/MobileRendererFixes.cs"')
 text = set_setting(text, 'input_devices', 'pointing/emulate_mouse_from_touch', 'false')
 text = set_setting(text, 'display', 'window/handheld/orientation', '4')
 # Scenes and resources go into the pack as they are. Converting them to
@@ -132,12 +142,60 @@ patch_source('Sonic Remake Project.csproj', [
      '</Project>'),
 ])
 
+patch_source('object/stage/destructable/resource/script/DestructableObject.cs', [
+    # Debris fades out through transparency, which the Mobile renderer ignores:
+    # MobileRendererFixes does it instead.
+    ('\t\t\tpiece.mesh.Transparency = 0.01f;\n',
+     '\t\t\tpiece.mesh.Transparency = 0.01f;\n\t\t\tProject.Core.MobileRendererFixes.Track(piece.mesh);\n'),
+])
+
 patch_source('core/Runtime.cs', [
     # Setting the mouse mode on iOS logs a warning with a C# backtrace, and the
     # game set it every frame in a level.
     ('\t\tif (IsInstanceValid(StageSettings.Player) && !StageSettings.Player.Camera.IsFreeCamActive)\n',
      '\t\tif (OS.GetName() != "iOS" && IsInstanceValid(StageSettings.Player) && !StageSettings.Player.Camera.IsFreeCamActive)\n'),
 ])
+
+# The Mobile renderer halves every 3D color it draws (frag_color *= its
+# luminance multiplier, 0.5), multiply-blended shaders included: they then
+# darkened what is behind them where they should leave it unchanged (black
+# blobs where Lost Prologue's Wonderblocks appear). Double their output there.
+MULTIPLY_FIX = '#if CURRENT_RENDERER == RENDERER_MOBILE\n\t// iOS port: the Mobile renderer halves 3D colors, multipliers included\n\t{}\n#endif\n'
+for shader in project.rglob('*.gdshader'):
+    if '.godot' in shader.parts:
+        continue
+    code = shader.read_text(encoding='utf-8')
+    if not re.search(r'render_mode[^;]*\bblend_mul\b', code) or 'RENDERER_MOBILE' in code:
+        continue
+    start = re.search(r'void\s+fragment\s*\(\s*\)\s*\{', code)
+    if not start:
+        sys.exit(f'{shader}: a blend_mul shader without fragment(), the iOS patch needs updating')
+    depth, end = 1, start.end()
+    while depth:
+        depth += {'{': 1, '}': -1}.get(code[end], 0)
+        end += 1
+    unshaded = re.search(r'render_mode[^;]*\bunshaded\b', code)
+    scale = 'ALBEDO *= 2.0;' if unshaded else 'ALBEDO *= 2.0;\n\tEMISSION *= 2.0;'
+    code = code[:end - 1] + MULTIPLY_FIX.format(scale) + code[end - 1:]
+    shader.write_text(code, encoding='utf-8')
+    print(f'{shader}: multiply output doubled on the Mobile renderer')
+
+# Cutscenes that name their video by uid:// play only sound on iOS: the .mp4
+# behind the uid is not exported, so the Theora copy beside it is never found.
+# Name them by path, which VideoStreamFileLoadPlayer turns into the .ogv.
+video_uids = {}
+for uid_file in (project / 'video').rglob('*.mp4.uid'):
+    video_uids[uid_file.read_text(encoding='utf-8').strip()] = \
+        'res://' + uid_file.with_suffix('').relative_to(project).as_posix()
+rewritten = 0
+for scene in (project / 'video').rglob('*.tscn'):
+    body = scene.read_text(encoding='utf-8')
+    updated = re.sub(r'^videoFilePath = "(uid://[^"]+)"$',
+                     lambda m: f'videoFilePath = "{video_uids.get(m.group(1), m.group(1))}"', body, flags=re.M)
+    if updated != body:
+        scene.write_text(updated, encoding='utf-8')
+        rewritten += 1
+print(f'cutscene videos named by path: {rewritten} scenes')
 
 if '--texture-limit' in sys.argv:
     limit = int(sys.argv[sys.argv.index('--texture-limit') + 1])

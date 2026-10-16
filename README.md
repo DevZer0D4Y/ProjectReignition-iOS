@@ -23,6 +23,7 @@ YouTube: https://www.youtube.com/@develop_erZ
 - Cutscenes played as Ogg Theora, since the PC build's H.264 player has no iOS version.
 - Saves, settings and mods in the app's folder in the Files app, kept across updates.
 - Lost Prologue's bloom working on the Mobile renderer.
+- Effects drawn as on PC: Godot's Mobile renderer ignores the fade the game uses for the homing attack's aura, item box glows and debris, and halves multiply-blended effects; the port makes up for both.
 - Garbage collections run during loading screens instead of during gameplay.
 - Apple Game Mode support on compatible devices and iOS versions.
 
@@ -69,9 +70,8 @@ Low Power Mode limits the screen, and so the game, to 60 FPS.
 
 ## Status and known issues
 
-Current version: **1.0.9 (build 4)**.
+Current version: **1.0.9 (build 5)**.
 
-- Multiply-blended effects render too dark: the Mobile renderer halves every 3D color it draws, these effects included. This shows as dark patches when Lost Prologue's Wonderblocks appear, and in some effects in later stages. A fix is in progress.
 - The first visit to an area can stutter briefly while its shaders compile. Later visits use the shader cache.
 - A hot phone, after a long session or while charging, runs slower as iOS lowers its clock speeds.
 - Party mode's local network play has not been tested.
@@ -118,7 +118,7 @@ xcrun devicectl device process launch --device <device> \
 
 | Path | Contents |
 |---|---|
-| [`ios/overlay/`](ios/overlay/) | Files copied over the game: touch controls, video player, Lost Prologue's bloom, garbage collection, testing tools and the iOS export preset |
+| [`ios/overlay/`](ios/overlay/) | Files copied over the game: touch controls, video player, Lost Prologue's bloom, Mobile renderer fixes, garbage collection, testing tools and the iOS export preset |
 | [`ios/scripts/apply_ios_settings.py`](ios/scripts/apply_ios_settings.py) | iOS project settings and the patches to the game's code |
 | [`ios/scripts/build_ios.sh`](ios/scripts/build_ios.sh) | Overlay, import, C#, export, Xcode build and IPA packaging |
 | [`ios/tools/`](ios/tools/) | Video conversion to Ogg Theora and a `.pck` extractor |

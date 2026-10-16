@@ -16,7 +16,8 @@ namespace Project.Core;
 /// Test modes, for runs started from a Mac with
 /// <c>xcrun devicectl device process launch --environment-variables '{"PR_BENCH": "..."}'</c>:
 /// <list type="bullet">
-/// <item>PR_BENCH=sand oasis/Act1Main: loads that level (a file in res://resource/level data/)
+/// <item>PR_BENCH=sand oasis/Act1Main: loads that level (a file in res://resource/level data/, or any
+/// res://...tscn scene such as a cutscene)
 /// straight from boot, lets Autorun play it, logs a BENCH summary after PR_BENCH_SECONDS
 /// (default 60) and quits.</item>
 /// <item>PR_SHOTS=5,20: screenshots that many seconds into the benchmark, in Documents/shots/.</item>
@@ -268,6 +269,16 @@ public partial class PerfProbe : Node
 
 	private void StartBenchLevel()
 	{
+		if (benchLevel.EndsWith(".tscn")) // Any scene, such as a cutscene
+		{
+			GD.Print($"BENCH loading {benchLevel}");
+			benchState = BenchState.Running;
+			benchStartUsec = Time.GetTicksUsec();
+			TransitionManager.QueueSceneChange(benchLevel);
+			TransitionManager.StartTransition(new() { inSpeed = 0.5f, color = Colors.Black });
+			return;
+		}
+
 		var level = ResourceLoader.Exists(benchLevel) ? ResourceLoader.Load(benchLevel) as LevelDataResource : null;
 		if (level == null || string.IsNullOrEmpty(level.LevelPath))
 		{
